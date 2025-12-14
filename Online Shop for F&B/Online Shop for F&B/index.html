@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Home</title>
+        <link rel="styleSheet" href="Css/style.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    </head>
+    <body>
+        <nav>
+            <div>
+                <div class="brand">
+                    <img class="logo" src="Assets/logo.png" alt="Logo Pic">
+                    <span class="brandName">Delicious Bite</span>
+                </div>
+            </div>
+            <div>
+                <a href="index.html" id="active" class="links">Home</a>
+                <a href="products.html" class="links">Products</a>
+                <a href="about.html" class="links">About us</a>
+                <a href="contact.html" class="links">Contact</a>
+                <a href="login.html" class="links">Logout</a>
+                <a href="cart.html" class="links">Cart</a>
+            </div>
+        </nav>
+       
+        <section>
+            <div class="indexHeader">
+                <div>
+                    <img class="HeroImg" src="Assets/green salad.png" alt="food">
+                    <div class="indexTitle">
+                        <span>Savor the taste of perfection</span>
+                        <p>Mouth-watering recipes and a passion for good food delivered to your door</p>
+                    </div>
+                </div>
+                <div>
+                    <button class="btn" onclick="window.location.href='/products.html'">Shop Now</button>
+                </div> 
+            </div>
+        </section>
+
+
+        <section class="indexBody">
+            <div class="heading"> Featured Products </div>
+            <div class="indexCardContainer">
+                <div class="card">
+                    <div class="foodImg">
+                        <img src="Assets/green salad.png" alt="Green Salad">
+                    </div>
+                    <div class="CardDetails">
+                      <div>
+                        <span>Green Salad</span>
+                        <span>$5</span>
+                      </div>
+                      <button class="addToCartBtn">Add to Cart</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="foodImg">
+                        <img src="Assets/cheese burger.png" alt="cheese burger ">
+                    </div>
+                    <div class="CardDetails">
+                      <div>
+                        <span>Cheese burger</span>
+                        <span>$2</span>
+                      </div>
+                      <button class="addToCartBtn">Add to Cart</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="foodImg">
+                        <img src="Assets/apple juice.png" alt="Apple juice">
+                    </div>
+                    <div class="CardDetails">
+                      <div>
+                        <span>Apple juice</span>
+                        <span>$1.75</span>
+                      </div>
+                      <button class="addToCartBtn">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <div class="footerContainer">
+                <div>
+                    <div class="footerTitle"> Contact Info</div><br>
+                    <div><a class="links" href="#">info@gmail.com</a></div>
+                </div>
+                <div> 
+                    <div class="footerTitle">Social Media</div><br>
+                    <div class="social-icons">
+                        <a href="https://www.facebook.com">
+                            <i class="fab fa-facebook"></i>
+                        </a> 
+                        <a href="https://www.instagram.com">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <hr style="opacity: 40%;">
+            <span>&copy; 2025 Delicious Bite. All rights reserved.</span>
+          </footer>
+    </body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart - Delicious Bite</title>
+    <link rel="stylesheet" href="Css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav>
+        <div>
+            <div class="brand">
+                <img class="logo" src="Assets/logo.png" alt="Logo Pic">
+                <span class="brandName">Delicious Bite</span>
+            </div>
+        </div>
+        <div>
+            <a href="index.html" class="links">Home</a>
+            <a href="products.html" class="links">Products</a>
+            <a href="about.html" class="links">About us</a>
+            <a href="contact.html" class="links">Contact</a>
+            <a href="login.html" class="links">Logout</a>
+            <a id="active" href="cart.html" class="links">Cart</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="Hero">
+        <img class="HeroImg" src="Assets/shopping-bag_2847085.png" alt="Shopping Cart Illustration">
+        <h1>Your Shopping Cart</h1>
+        <p>Review your items and proceed to checkout</p>
+    </section>
+
+    <!-- Cart Content -->
+    <section class="cart-container">
+        <div class="cart-content">
+            <!-- Cart Items -->
+            <div class="cart-items">
+                <div class="cart-item">
+                    <div class="cart-item-img">
+                        <img src="Assets/taco.png" alt="Tacos">
+                    </div>
+                    <div class="cart-item-details">
+                        <div class="cart-item-name">Tacos</div>
+                        <div class="cart-item-price">$3.00</div>
+                        <div class="cart-item-quantity">
+                            <button class="quantity-btn minus">-</button>
+                            <span class="quantity">1</span>
+                            <button class="quantity-btn plus">+</button>
+                        </div>
+                    </div>
+                    <button class="remove-btn">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+
+                <div class="cart-item">
+                    <div class="cart-item-img">
+                        <img src="Assets/coffee.png" alt="Iced Coffee">
+                    </div>
+                    <div class="cart-item-details">
+                        <div class="cart-item-name">Iced Coffee</div>
+                        <div class="cart-item-price">$10.00</div>
+                        <div class="cart-item-quantity">
+                            <button class="quantity-btn minus">-</button>
+                            <span class="quantity">2</span>
+                            <button class="quantity-btn plus">+</button>
+                        </div>
+                    </div>
+                    <button class="remove-btn">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+
+                <div class="cart-item">
+                    <div class="cart-item-img">
+                        <img src="Assets/cheese burger.png" alt="Cheese Burger">
+                    </div>
+                    <div class="cart-item-details">
+                        <div class="cart-item-name">Cheese Burger</div>
+                        <div class="cart-item-price">$2.00</div>
+                        <div class="cart-item-quantity">
+                            <button class="quantity-btn minus">-</button>
+                            <span class="quantity">3</span>
+                            <button class="quantity-btn plus">+</button>
+                        </div>
+                    </div>
+                    <button class="remove-btn">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cart Summary -->
+            <div class="cart-summary">
+                <h2>Order Summary</h2>
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span>$29.00</span>
+                </div>
+                <div class="summary-row">
+                    <span>Delivery Fee</span>
+                    <span>$5.00</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total</span>
+                    <span>$34.00</span>
+                </div>
+                <button class="btn checkout-btn">Proceed to Checkout</button>
+                <button class="btn continue-shopping" onclick="window.location.href='products.html'">
+                    Continue Shopping
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="footerContainer">
+            <div>
+                <div class="footerTitle"> Contact Info</div><br>
+                <div><a class="links" href="#">info@gmail.com</a></div>
+            </div>
+            <div> 
+                <div class="footerTitle">Social Media</div><br>
+                <div class="social-icons">
+                    <a href="https://www.facebook.com"><i class="fab fa-facebook"></i></a> 
+                    <a href="https://www.instagram.com"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+        <hr style="opacity: 40%;">
+        <span>&copy; 2025 Delicious Bite. All rights reserved.</span>
+    </footer>
+
+    <script>
+        // Cart functionality
+        document.querySelectorAll('.quantity-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const item = this.closest('.cart-item');
+                const quantitySpan = item.querySelector('.quantity');
+                let quantity = parseInt(quantitySpan.textContent);
+                
+                if (this.classList.contains('plus')) {
+                    quantity++;
+                } else if (this.classList.contains('minus') && quantity > 1) {
+                    quantity--;
+                }
+                
+                quantitySpan.textContent = quantity;
+                updateCartTotal();
+            });
+        });
+
+        document.querySelectorAll('.remove-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.closest('.cart-item').remove();
+                updateCartTotal();
+            });
+        });
+
+        function updateCartTotal() {
+            // This would calculate total based on items and quantities
+            console.log('Cart updated');
+        }
+    </script>
+</body>
+</html>

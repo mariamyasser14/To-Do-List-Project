@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Delicious Bite</title>
+    <link rel="stylesheet" href="Css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav>
+        <div>
+            <div class="brand">
+                <img class="logo" src="Assets/logo.png" alt="Logo Pic">
+                <span class="brandName">Delicious Bite</span>
+            </div>
+        </div>
+        <div>
+            <a href="register.html" class="links">Sign Up</a>
+        </div>
+     
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="Hero">
+        
+        <h1>Welcome Back!</h1>
+        <p>Sign in to your account to continue</p>
+    </section>
+
+    <!-- Login Form -->
+    <section >
+        <div class="login-container" >
+            <form  action="index.html" method="post">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="login-email" name="email" placeholder="Enter your email" required>
+                    
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="password-input">
+                        <input type="password" id="login-password" name="password" placeholder="Enter your password" required>
+                        <button type="button" class="toggle-password">
+                            <i class="far fa-eye"></i>
+                        </button>
+                    </div>
+                    
+                </div>
+
+                <div class="form-options">
+                    <label class="remember-me">
+                        <input type="checkbox" name="remember">
+                        <span>Remember me</span>
+                    </label>
+                    <a href="#" class="forgot-password">Forgot Password?</a>
+                </div>
+
+                <button type="submit" onclick="window.location.href='/index.html'" class="btn login-btn">Sign In</button>
+
+                <div class="divider">
+                    <span>or</span>
+                </div>
+
+                <button type="button" class="btn social-btn google-btn">
+                    <i class="fab fa-google"></i>
+                    Continue with Google
+                </button>
+
+                <button type="button" class="btn social-btn facebook-btn">
+                    <i class="fab fa-facebook-f"></i>
+                    Continue with Facebook
+                </button>
+
+                <div class="register-link">
+                    <p>Don't have an account? <a href="register.html">Sign up here</a></p>
+                </div>
+            </form>
+
+            <div>
+                <img  class="contactImg" src="Assets/Tiny people carrying key to open padlock.jpg" alt="Food Illustration">
+            </div>
+        </div>
+    </section>
+
+
+
+    <footer>
+        <div class="footerContainer">
+            <div>
+                <div class="footerTitle"> Contact Info</div><br>
+                <div><a class="links" href="#">info@gmail.com</a></div>
+            </div>
+            <div> 
+                <div class="footerTitle">Social Media</div><br>
+                <div class="social-icons">
+                    <a href="https://www.facebook.com"><i class="fab fa-facebook"></i></a> 
+                    <a href="https://www.instagram.com"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+        <hr style="opacity: 40%;">
+        <span>&copy; 2025 Delicious Bite. All rights reserved.</span>
+    </footer>
+
+    <script>
+        // Toggle password visibility
+        document.querySelector('.toggle-password').addEventListener('click', function() {
+            const passwordInput = document.getElementById('login-password');
+            const icon = this.querySelector('i');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+
+        // Form validation
+        document.querySelector('.login-form').addEventListener('submit', function(e) {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (!email || !password) {
+                e.preventDefault();
+                alert('Please fill in all required fields');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+primary color:#FF7A1A--orange
+btn color:#0095FF--blue
+neutral colors:#2B2B2B--black
+               #FDFDFD--white
