@@ -1,50 +1,41 @@
 
 import json
 import uuid
-import time
-import threading
+import os
 from datetime import datetime
 from flask import Flask, request, jsonify, Response, send_from_directory
-import os
+from sqlalchemy import create_engine, Column, String, Boolean, DateTime, Text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 
-# ─── In-memory data store ───────────────────────────────────────────────────
-tasks = {}          # task_id -> task dict
-tasks_lock = threading.Lock()
+# ─── Database setup ──────────────────────────────────────────────────────────
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///tasks.db")
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
+Base = declarative_base()
 
-# SSE clients: list of (queue, client_id)
-sse_clients = []
-sse_clients_lock = threading.Lock()
+class Task(Base):
+    __tablename__ = "tasks"
+    id = Column(String, primary_key=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, default="")
+    priority = Column(String, default="medium")
+    category = Column(String, default="General")
+    completed = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-# ─── Helpers ────────────────────────────────────────────────────────────────
+Base.metadata.create_all(engine)
 
-def make_task(title, description="", priority="medium", category="General"):
-    task_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat() + "Z"
-    return {
-        "id": task_id,
-        "title": title,
-        "description": description,
-        "priority": priority,      # low | medium | high
-        "category": category,
-        "completed": False,
-        "created_at": now,
-        "updated_at": now,
-    }
-
-def broadcast(event_type, data):
-    """Push an SSE event to all connected clients."""
-    payload = json.dumps({"event": event_type, "data": data})
-    dead = []
-    with sse_clients_lock:
-        for q, cid in sse_clients:
-            try:
-                q.put_nowait(payload)
-            except Exception:
-                dead.append((q, cid))
-        for item in dead:
-            sse_clients.remove(item)
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 # ─── CORS helper ────────────────────────────────────────────────────────────
 def with_cors(response):
@@ -56,6 +47,8 @@ def with_cors(response):
 @app.after_request
 def add_cors(response):
     return with_cors(response)
+
+
 
 @app.route("/api", methods=["OPTIONS", "GET"])
 def api_docs():
@@ -70,10 +63,11 @@ def api_docs():
             "GET  /api/tasks/<id>": "Get single task",
             "PUT  /api/tasks/<id>": "Update task fields",
             "DELETE /api/tasks/<id>": "Delete task",
-            "GET  /api/stream": "SSE stream for real-time updates",
             "GET  /api/stats": "Task statistics",
         }
     })
+
+
 
 # ─── Task CRUD ───────────────────────────────────────────────────────────────
 
@@ -81,21 +75,32 @@ def api_docs():
 def list_tasks():
     if request.method == "OPTIONS":
         return Response(status=204)
-    with tasks_lock:
-        result = list(tasks.values())
-    # optional filters
-    cat = request.args.get("category")
-    pri = request.args.get("priority")
-    done = request.args.get("completed")
-    if cat:
-        result = [t for t in result if t["category"].lower() == cat.lower()]
-    if pri:
-        result = [t for t in result if t["priority"] == pri]
-    if done is not None:
-        flag = done.lower() == "true"
-        result = [t for t in result if t["completed"] == flag]
-    result.sort(key=lambda t: t["created_at"], reverse=True)
-    return jsonify(result)
+    db = SessionLocal()
+    try:
+        result = db.query(Task).all()
+        cat = request.args.get("category")
+        pri = request.args.get("priority")
+        done = request.args.get("completed")
+        if cat:
+            result = [t for t in result if t.category.lower() == cat.lower()]
+        if pri:
+            result = [t for t in result if t.priority == pri]
+        if done is not None:
+            flag = done.lower() == "true"
+            result = [t for t in result if t.completed == flag]
+        result.sort(key=lambda t: t.created_at, reverse=True)
+        return jsonify([{
+            "id": t.id,
+            "title": t.title,
+            "description": t.description,
+            "priority": t.priority,
+            "category": t.category,
+            "completed": t.completed,
+            "created_at": t.created_at.isoformat() + "Z",
+            "updated_at": t.updated_at.isoformat() + "Z",
+        } for t in result])
+    finally:
+        db.close()
 
 
 @app.route("/api/tasks", methods=["POST"])
@@ -104,111 +109,131 @@ def create_task():
     title = (body.get("title") or "").strip()
     if not title:
         return jsonify({"error": "title is required"}), 400
-    task = make_task(
-        title=title,
-        description=body.get("description", ""),
-        priority=body.get("priority", "medium"),
-        category=body.get("category", "General"),
-    )
-    with tasks_lock:
-        tasks[task["id"]] = task
-    # broadcast("task_created", task)
-    return jsonify(task), 201
+
+    task_id = str(uuid.uuid4())
+    now = datetime.utcnow()
+
+    db = SessionLocal()
+    try:
+        task = Task(
+            id=task_id,
+            title=title,
+            description=body.get("description", ""),
+            priority=body.get("priority", "medium"),
+            category=body.get("category", "General"),
+            created_at=now,
+            updated_at=now
+        )
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+        return jsonify({
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "priority": task.priority,
+            "category": task.category,
+            "completed": task.completed,
+            "created_at": task.created_at.isoformat() + "Z",
+            "updated_at": task.updated_at.isoformat() + "Z",
+        }), 201
+    finally:
+        db.close()
 
 
 @app.route("/api/tasks/<task_id>", methods=["GET"])
 def get_task(task_id):
-    with tasks_lock:
-        task = tasks.get(task_id)
-    if not task:
-        return jsonify({"error": "Not found"}), 404
-    return jsonify(task)
+    db = SessionLocal()
+    try:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if not task:
+            return jsonify({"error": "Not found"}), 404
+        return jsonify({
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "priority": task.priority,
+            "category": task.category,
+            "completed": task.completed,
+            "created_at": task.created_at.isoformat() + "Z",
+            "updated_at": task.updated_at.isoformat() + "Z",
+        })
+    finally:
+        db.close()
 
 
 @app.route("/api/tasks/<task_id>", methods=["PUT", "OPTIONS"])
 def update_task(task_id):
     if request.method == "OPTIONS":
         return Response(status=204)
-    with tasks_lock:
-        task = tasks.get(task_id)
-    if not task:
-        return jsonify({"error": "Not found"}), 404
     body = request.get_json(silent=True) or {}
-    allowed = {"title", "description", "priority", "category", "completed"}
-    with tasks_lock:
+
+    db = SessionLocal()
+    try:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if not task:
+            return jsonify({"error": "Not found"}), 404
+
+        allowed = {"title", "description", "priority", "category", "completed"}
         for key in allowed:
             if key in body:
-                task[key] = body[key]
-        task["updated_at"] = datetime.utcnow().isoformat() + "Z"
-    # broadcast("task_updated", task)
-    return jsonify(task)
+                setattr(task, key, body[key])
+        task.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(task)
+
+        return jsonify({
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "priority": task.priority,
+            "category": task.category,
+            "completed": task.completed,
+            "created_at": task.created_at.isoformat() + "Z",
+            "updated_at": task.updated_at.isoformat() + "Z",
+        })
+    finally:
+        db.close()
 
 
 @app.route("/api/tasks/<task_id>", methods=["DELETE", "OPTIONS"])
 def delete_task(task_id):
     if request.method == "OPTIONS":
         return Response(status=204)
-    with tasks_lock:
-        task = tasks.pop(task_id, None)
-    if not task:
-        return jsonify({"error": "Not found"}), 404
-    # broadcast("task_deleted", {"id": task_id})
-    return jsonify({"deleted": task_id})
+
+    db = SessionLocal()
+    try:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if not task:
+            return jsonify({"error": "Not found"}), 404
+        db.delete(task)
+        db.commit()
+        return jsonify({"deleted": task_id})
+    finally:
+        db.close()
 
 
 @app.route("/api/stats")
 def stats():
-    with tasks_lock:
-        all_tasks = list(tasks.values())
-    total = len(all_tasks)
-    completed = sum(1 for t in all_tasks if t["completed"])
-    by_priority = {"low": 0, "medium": 0, "high": 0}
-    by_category = {}
-    for t in all_tasks:
-        by_priority[t.get("priority", "medium")] = by_priority.get(t.get("priority", "medium"), 0) + 1
-        cat = t.get("category", "General")
-        by_category[cat] = by_category.get(cat, 0) + 1
-    return jsonify({
-        "total": total,
-        "completed": completed,
-        "pending": total - completed,
-        "by_priority": by_priority,
-        "by_category": by_category,
-    })
-
-
-# ─── Server-Sent Events ──────────────────────────────────────────────────────
-
-@app.route("/api/stream")
-def sse_stream():
-    import queue as q_module
-    client_queue = q_module.Queue(maxsize=50)
-    client_id = str(uuid.uuid4())
-    with sse_clients_lock:
-        sse_clients.append((client_queue, client_id))
-
-    def generate():
-        # Send initial snapshot
-        with tasks_lock:
-            snapshot = list(tasks.values())
-        yield f"data: {json.dumps({'event': 'snapshot', 'data': snapshot})}\n\n"
-        # Stream events
-        try:
-            while True:
-                try:
-                    msg = client_queue.get(timeout=25)
-                    yield f"data: {msg}\n\n"
-                except Exception:
-                    yield ": heartbeat\n\n"
-        except GeneratorExit:
-            with sse_clients_lock:
-                try:
-                    sse_clients.remove((client_queue, client_id))
-                except ValueError:
-                    pass
-
-    return Response(generate(), mimetype="text/event-stream",
-                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    db = SessionLocal()
+    try:
+        all_tasks = db.query(Task).all()
+        total = len(all_tasks)
+        completed = sum(1 for t in all_tasks if t.completed)
+        by_priority = {"low": 0, "medium": 0, "high": 0}
+        by_category = {}
+        for t in all_tasks:
+            by_priority[t.priority] = by_priority.get(t.priority, 0) + 1
+            by_category[t.category] = by_category.get(t.category, 0) + 1
+        return jsonify({
+            "total": total,
+            "completed": completed,
+            "pending": total - completed,
+            "by_priority": by_priority,
+            "by_category": by_category,
+        })
+    finally:
+        db.close()
 
 
 # ─── Serve embedded web client ───────────────────────────────────────────────
@@ -444,35 +469,32 @@ WEB_CLIENT_HTML = r"""<!DOCTYPE html>
 const API = "/api";
 let tasks = {};
 let currentFilter = "all";
-let es = null;
 
-// ── SSE ─────────────────────────────────────────────────────────────────────
-function connect() {
-  es = new EventSource(API + "/stream");
-  es.onopen = () => setStatus(true);
-  es.onerror = () => { setStatus(false); setTimeout(connect, 3000); };
-  es.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    if (msg.event === "snapshot") {
+// ── Polling ──────────────────────────────────────────────────────────────────
+function pollTasks() {
+  fetch(API + "/tasks")
+    .then(r => r.json())
+    .then(data => {
       tasks = {};
-      msg.data.forEach(t => tasks[t.id] = t);
-    } else if (msg.event === "task_created") {
-      tasks[msg.data.id] = msg.data;
-      toast("📝 New task added: " + msg.data.title);
-    } else if (msg.event === "task_updated") {
-      tasks[msg.data.id] = msg.data;
-    } else if (msg.event === "task_deleted") {
-      delete tasks[msg.data.id];
-      toast("🗑️ Task deleted");
-    }
-    render(); updateStats();
-  };
+      data.forEach(t => tasks[t.id] = t);
+      render();
+      updateStats();
+      setStatus(true);
+    })
+    .catch(() => setStatus(false));
+}
+
+function startPolling() {
+  setStatus(true);
+  pollTasks();
+  setInterval(pollTasks, 2000);
 }
 
 function setStatus(ok) {
   document.getElementById("statusDot").className = "dot" + (ok ? " connected" : "");
   document.getElementById("statusText").textContent = ok ? "Live ✦ Connected" : "Reconnecting…";
 }
+
 
 // ── Render ───────────────────────────────────────────────────────────────────
 function filtered() {
@@ -586,7 +608,8 @@ function toast(msg) {
 document.getElementById("newTitle").addEventListener("keydown", e => { if(e.key==="Enter") addTask(); });
 document.getElementById("editModal").addEventListener("click", e => { if(e.target===e.currentTarget) closeEdit(); });
 
-connect();
+startPolling();
+
 </script>
 </body>
 </html>"""
@@ -599,16 +622,32 @@ def index():
 
 # ─── Seed data ───────────────────────────────────────────────────────────────
 def seed():
-    samples = [
-        ("Set up project repository", "Initialize Git, create README and folder structure", "high", "Development"),
-        ("Design database schema", "Plan tables for users, tasks, and categories", "high", "Development"),
-        ("Write unit tests", "Cover all API endpoints with pytest", "medium", "Testing"),
-        ("Deploy to production", "Configure server, set env vars, enable HTTPS", "medium", "DevOps"),
-        ("Update project documentation", "Add API docs and usage examples", "low", "Documentation"),
-    ]
-    for title, desc, pri, cat in samples:
-        t = make_task(title, desc, pri, cat)
-        tasks[t["id"]] = t
+    db = SessionLocal()
+    try:
+        if db.query(Task).count() > 0:
+            return
+        samples = [
+            ("Set up project repository", "Initialize Git, create README and folder structure", "high", "Development"),
+            ("Design database schema", "Plan tables for users, tasks, and categories", "high", "Development"),
+            ("Write unit tests", "Cover all API endpoints with pytest", "medium", "Testing"),
+            ("Deploy to production", "Configure server, set env vars, enable HTTPS", "medium", "DevOps"),
+            ("Update project documentation", "Add API docs and usage examples", "low", "Documentation"),
+        ]
+        now = datetime.utcnow()
+        for title, desc, pri, cat in samples:
+            task = Task(
+                id=str(uuid.uuid4()),
+                title=title,
+                description=desc,
+                priority=pri,
+                category=cat,
+                created_at=now,
+                updated_at=now,
+            )
+            db.add(task)
+        db.commit()
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":
@@ -618,7 +657,6 @@ if __name__ == "__main__":
     print("="*55)
     print("  Web client  → http://localhost:5000")
     print("  REST API    → http://localhost:5000/api/tasks")
-    print("  Live stream → http://localhost:5000/api/stream")
     print("="*55 + "\n")
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
