@@ -112,7 +112,7 @@ def create_task():
     )
     with tasks_lock:
         tasks[task["id"]] = task
-    broadcast("task_created", task)
+    # broadcast("task_created", task)
     return jsonify(task), 201
 
 
@@ -140,7 +140,7 @@ def update_task(task_id):
             if key in body:
                 task[key] = body[key]
         task["updated_at"] = datetime.utcnow().isoformat() + "Z"
-    broadcast("task_updated", task)
+    # broadcast("task_updated", task)
     return jsonify(task)
 
 
@@ -152,7 +152,7 @@ def delete_task(task_id):
         task = tasks.pop(task_id, None)
     if not task:
         return jsonify({"error": "Not found"}), 404
-    broadcast("task_deleted", {"id": task_id})
+    # broadcast("task_deleted", {"id": task_id})
     return jsonify({"deleted": task_id})
 
 
